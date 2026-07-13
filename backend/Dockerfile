@@ -21,8 +21,15 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
+# Ensure an .env file exists and generate a fallback APP_KEY to prevent 500 errors
+RUN cp .env.example .env
+
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
+
+# Generate a fresh APP_KEY and explicitly enable debug mode to show errors
+RUN php artisan key:generate
+ENV APP_DEBUG=true
 
 # Set Apache DocumentRoot to the Laravel public folder
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
