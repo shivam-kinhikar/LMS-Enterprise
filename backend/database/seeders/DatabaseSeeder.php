@@ -16,17 +16,19 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Create Super Admin Role
-        $superAdminRole = Role::create([
+        $superAdminRole = Role::firstOrCreate([
             'role_name' => 'Super Admin'
         ]);
 
         // Create Default Admin User
-        User::create([
-            'name' => 'Admin Demo',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'role_id' => $superAdminRole->id,
-            'status' => true
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Admin Demo',
+                'password' => Hash::make('password'),
+                'role_id' => $superAdminRole->id,
+                'status' => true
+            ]
+        );
     }
 }
