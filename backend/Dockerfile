@@ -29,8 +29,16 @@ ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+# Ensure storage directories exist (sometimes .gitignore prevents them from being committed)
+RUN mkdir -p /var/www/html/storage/framework/cache/data \
+    /var/www/html/storage/framework/views \
+    /var/www/html/storage/framework/sessions \
+    /var/www/html/storage/logs \
+    /var/www/html/bootstrap/cache
+
 # Set permissions for Laravel storage and cache directories
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Copy and set up the entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
