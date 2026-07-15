@@ -24,3 +24,12 @@ export const deleteUser = async (id) => {
   const response = await axiosClient.delete(`/users/${id}`);
   return response;
 };
+
+export const uploadUserAvatar = async (id, formData) => {
+  const response = await axiosClient.post(`/users/${id}/avatar`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};

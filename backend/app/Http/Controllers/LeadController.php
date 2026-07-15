@@ -11,7 +11,7 @@ class LeadController extends Controller
 {
     public function index(Request $request)
     {
-        // Simple authorization check Example
+        if ($request->user()->role->role_name === 'User') return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         // if (!$request->user()->hasPermission('view_leads')) return response()->json([], 403);
 
         $query = Lead::with(['assignedUser', 'creator', 'followups', 'status', 'source']);
@@ -35,6 +35,8 @@ class LeadController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->user()->role->role_name === 'User') return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email',
@@ -99,8 +101,10 @@ class LeadController extends Controller
         }
     }
 
-    public function show(Lead $lead)
+    public function show(Request $request, Lead $lead)
     {
+        if ($request->user()->role->role_name === 'User') return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+
         $lead->load(['assignedUser', 'followups', 'creator', 'status', 'source']);
         
         return response()->json([
@@ -112,6 +116,8 @@ class LeadController extends Controller
 
     public function update(Request $request, Lead $lead)
     {
+        if ($request->user()->role->role_name === 'User') return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+
         $lead->update($request->all());
         
         LeadActivityLog::create([
@@ -128,8 +134,13 @@ class LeadController extends Controller
         ]);
     }
 
-    public function destroy(Lead $lead)
+    public function destroy(Request $request, Lead $lead)
     {
+        $role = $request->user()->role->role_name;
+        if (in_array($role, ['User', 'Sales Exec'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to delete leads'], 403);
+        }
+
         $lead->delete();
         return response()->json([
             'success' => true,
@@ -139,6 +150,11 @@ class LeadController extends Controller
 
     public function bulkDelete(Request $request)
     {
+        $role = $request->user()->role->role_name;
+        if (in_array($role, ['User', 'Sales Exec'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to delete leads'], 403);
+        }
+
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'exists:leads,id'

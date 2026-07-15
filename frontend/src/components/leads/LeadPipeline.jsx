@@ -40,7 +40,7 @@ const LeadPipeline = () => {
           name: lead.name,
           company: lead.company,
           priority: lead.priority || 'Medium',
-          value: lead.budget ? `$${lead.budget.toLocaleString()}` : 'N/A'
+          value: lead.budget ? `₹${lead.budget.toLocaleString()}` : 'N/A'
         });
       });
       setColumns(newColumns);

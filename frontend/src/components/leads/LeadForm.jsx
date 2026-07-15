@@ -49,6 +49,9 @@ const LeadForm = ({ open, onClose, lead = null }) => {
       toast.success(`Lead ${isEdit ? 'updated' : 'created'} successfully!`);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      if (isEdit) {
+        queryClient.invalidateQueries({ queryKey: ['lead', String(lead.id)] });
+      }
       onClose();
     },
     onError: (error) => {

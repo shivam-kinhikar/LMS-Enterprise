@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { 
   Box, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Checkbox, Typography, Chip, IconButton, Menu, MenuItem, TablePagination
+  Checkbox, Typography, Chip, IconButton, Menu, MenuItem, TablePagination,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { 
   MoreVert, Phone, Email, Event, WhatsApp, DirectionsWalk, 
   CheckCircle, Schedule, Error 
@@ -28,6 +30,9 @@ const FollowupTable = ({ followups = [] }) => {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [anchorEl, setAnchorEl] = useState(null);
   const [activeId, setActiveId] = useState(null);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [newDate, setNewDate] = useState('');
+  const navigate = useNavigate();
 
   const handleMenuOpen = (e, id) => {
     setAnchorEl(e.currentTarget);
@@ -36,7 +41,6 @@ const FollowupTable = ({ followups = [] }) => {
   
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setActiveId(null);
   };
 
   const queryClient = useQueryClient();
@@ -67,12 +71,57 @@ const FollowupTable = ({ followups = [] }) => {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (data) => updateFollowup(activeId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['followups'] });
+      toast.success('Follow-up rescheduled!');
+      setRescheduleOpen(false);
+      handleMenuClose();
+    },
+    onError: () => {
+      toast.error('Failed to reschedule follow-up');
+    }
+  });
+
   const handleMarkComplete = () => {
     if (activeId) completeMutation.mutate(activeId);
   };
 
   const handleDelete = () => {
     if (activeId) deleteMutation.mutate(activeId);
+  };
+
+  const handleViewLead = () => {
+    if (activeId) {
+      const row = followups.find(f => f.id === activeId);
+      if (row && row.lead_id) {
+        navigate(`/leads/${row.lead_id}`);
+      } else {
+        toast.error('Lead ID not found');
+      }
+    }
+    handleMenuClose();
+  };
+
+  const openReschedule = () => {
+    if (activeId) {
+      const row = followups.find(f => f.id === activeId);
+      if (row && row.rawDate) {
+        setNewDate(`${row.rawDate}T${row.rawTime || '12:00'}`);
+      } else {
+        setNewDate(new Date().toISOString().slice(0,16));
+      }
+      setRescheduleOpen(true);
+    }
+    handleMenuClose();
+  };
+
+  const handleRescheduleSubmit = () => {
+    if (activeId && newDate) {
+      const [datePart, timePart] = newDate.split('T');
+      updateMutation.mutate({ date: datePart, time: timePart });
+    }
   };
 
   return (
@@ -133,8 +182,8 @@ const FollowupTable = ({ followups = [] }) => {
                     anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                   >
                     <MenuItem onClick={handleMarkComplete}>Mark as Completed</MenuItem>
-                    <MenuItem onClick={handleMenuClose}>Reschedule</MenuItem>
-                    <MenuItem onClick={handleMenuClose}>View Lead</MenuItem>
+                    <MenuItem onClick={openReschedule}>Reschedule</MenuItem>
+                    <MenuItem onClick={handleViewLead}>View Lead</MenuItem>
                     <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>Delete</MenuItem>
                   </Menu>
                 </TableCell>
@@ -152,6 +201,24 @@ const FollowupTable = ({ followups = [] }) => {
         onPageChange={(e, newPage) => setPage(newPage)}
         onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
       />
+
+      {/* Reschedule Dialog */}
+      <Dialog open={rescheduleOpen} onClose={() => setRescheduleOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Reschedule Follow-up</DialogTitle>
+        <DialogContent dividers>
+          <TextField 
+            fullWidth type="datetime-local" label="New Date & Time"
+            value={newDate} onChange={(e) => setNewDate(e.target.value)} 
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRescheduleOpen(false)}>Cancel</Button>
+          <Button onClick={handleRescheduleSubmit} variant="contained" disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 };

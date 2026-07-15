@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FollowupController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\LeadSourceController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -27,7 +28,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/leads/bulk-delete', [LeadController::class, 'bulkDelete']);
     Route::apiResource('leads', LeadController::class);
     Route::apiResource('followups', FollowupController::class);
+    Route::post('/users/{user}/avatar', [UserController::class, 'uploadAvatar']);
     Route::apiResource('users', UserController::class);
+    Route::apiResource('lead-sources', LeadSourceController::class);
     Route::get('/roles', function () {
         return response()->json([
             'success' => true,

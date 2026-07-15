@@ -5,20 +5,59 @@ import {
   Tabs, Tab, Box, Alert
 } from '@mui/material';
 import { Close, Person, Business, Loop } from '@mui/icons-material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchUsers, fetchRoles } from '../../api/userService';
+import { updateLead } from '../../api/leadService';
+import { toast } from 'react-toastify';
 
-const dummyUsers = ['Alex Johnson (Sales Rep)', 'Sarah Connor (Senior AE)', 'Michael Smith (SDR)'];
-const dummyDepartments = ['Enterprise Sales', 'SMB Sales', 'International Team', 'Marketing Qualified'];
-
-const AssignLeadModal = ({ open, onClose, selectedCount = 1 }) => {
+const AssignLeadModal = ({ open, onClose, selectedIds = [] }) => {
+  const selectedCount = selectedIds.length;
   const [tab, setTab] = useState(0);
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
 
+  const { data: usersData, isLoading: loadingUsers } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers
+  });
+  
+  const { data: rolesData, isLoading: loadingRoles } = useQuery({
+    queryKey: ['roles'],
+    queryFn: fetchRoles
+  });
+
+  const users = usersData?.data || usersData || [];
+  const departments = rolesData?.data || rolesData || [];
+
+  const queryClient = useQueryClient();
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ ids, data }) => {
+      const promises = ids.map(id => updateLead(id, data));
+      return Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast.success(`Successfully assigned ${selectedCount} lead(s)`);
+      onClose();
+    },
+    onError: () => {
+      toast.error('Failed to assign leads');
+    }
+  });
+
   const handleSave = () => {
-    const method = tab === 0 ? 'Manual' : tab === 1 ? 'Department' : 'Round Robin';
-    const target = tab === 0 ? selectedUser : tab === 1 ? selectedDept : 'Auto-distribution';
-    console.log(`Assigning ${selectedCount} lead(s) via ${method} to ${target}`);
-    onClose();
+    if (selectedIds.length === 0) {
+      onClose();
+      return;
+    }
+
+    if (tab === 0 && selectedUser) {
+      assignMutation.mutate({ ids: selectedIds, data: { assignedTo: selectedUser } });
+    } else {
+      toast.info('Department and Round Robin routing feature coming soon!');
+      onClose();
+    }
   };
 
   return (
@@ -44,8 +83,8 @@ const AssignLeadModal = ({ open, onClose, selectedCount = 1 }) => {
             <Typography variant="body2" color="text.secondary" mb={2}>
               Directly assign {selectedCount > 1 ? 'these leads' : 'this lead'} to a specific team member.
             </Typography>
-            <TextField fullWidth select label="Select User" value={selectedUser} onChange={e => setSelectedUser(e.target.value)} size="small">
-              {dummyUsers.map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+            <TextField fullWidth select label="Select User" value={selectedUser} onChange={e => setSelectedUser(e.target.value)} size="small" disabled={loadingUsers}>
+              {loadingUsers ? <MenuItem value="">Loading...</MenuItem> : users.length === 0 ? <MenuItem value="" disabled>No users found</MenuItem> : users.map(u => <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>)}
             </TextField>
           </Box>
         )}
@@ -55,8 +94,8 @@ const AssignLeadModal = ({ open, onClose, selectedCount = 1 }) => {
             <Typography variant="body2" color="text.secondary" mb={2}>
               Route {selectedCount > 1 ? 'these leads' : 'this lead'} to a department queue for managers to distribute.
             </Typography>
-            <TextField fullWidth select label="Select Department" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} size="small">
-              {dummyDepartments.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+            <TextField fullWidth select label="Select Department" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} size="small" disabled={loadingRoles}>
+              {loadingRoles ? <MenuItem value="">Loading...</MenuItem> : departments.length === 0 ? <MenuItem value="" disabled>No departments found</MenuItem> : departments.map(d => <MenuItem key={d.id} value={d.id}>{d.role_name || d.name}</MenuItem>)}
             </TextField>
           </Box>
         )}
@@ -82,10 +121,10 @@ const AssignLeadModal = ({ open, onClose, selectedCount = 1 }) => {
           onClick={handleSave} 
           variant="contained" 
           disableElevation 
+          disabled={assignMutation.isPending || (tab === 0 && !selectedUser) || (tab === 1 && !selectedDept)}
           sx={{ fontWeight: 600, borderRadius: '8px' }}
-          disabled={(tab === 0 && !selectedUser) || (tab === 1 && !selectedDept)}
         >
-          Confirm Assignment
+          {assignMutation.isPending ? 'Assigning...' : 'Confirm Assignment'}
         </Button>
       </DialogActions>
     </Dialog>

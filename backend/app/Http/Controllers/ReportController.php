@@ -10,6 +10,11 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
+        $role = $request->user()->role->role_name;
+        if (in_array($role, ['User', 'Sales Exec'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $leads = Lead::with(['source', 'assignedUser', 'status'])->get();
 
         // 1. Performance (Daily, Weekly, Monthly)
@@ -64,7 +69,7 @@ class ReportController extends Controller
             return [
                 'name' => $key,
                 'deals' => $deals,
-                'revenue' => '$' . number_format($rev),
+                'revenue' => '₹' . number_format($rev),
                 'raw_revenue' => $rev,
                 'conversion' => $totalLeads > 0 ? round(($deals / $totalLeads) * 100) . '%' : '0%',
                 'status' => $deals > 10 ? 'Top Performer' : ($deals > 5 ? 'On Target' : 'Needs Coaching')

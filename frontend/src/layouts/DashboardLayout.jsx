@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 import { 
   Box, Drawer, AppBar, Toolbar, List, Typography, Divider, 
   IconButton, ListItem, ListItemButton, ListItemIcon, ListItemText, 
@@ -35,6 +36,7 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const { user } = useContext(AuthContext);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const handleDesktopDrawerToggle = () => setDesktopOpen(!desktopOpen);
@@ -54,13 +56,18 @@ const DashboardLayout = () => {
 
   const notifications = [];
 
-  const menuItems = [
+  const allMenuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Leads', icon: <PeopleIcon />, path: '/leads' },
-    { text: 'Follow-ups', icon: <AssignmentIcon />, path: '/followups' },
-    { text: 'Reports', icon: <BarChartIcon />, path: '/reports' },
+    { text: 'Leads', icon: <PeopleIcon />, path: '/leads', restrictedTo: ['Super Admin', 'Admin', 'Sales Head', 'Manager', 'Sales Exec'] },
+    { text: 'Follow-ups', icon: <AssignmentIcon />, path: '/followups', restrictedTo: ['Super Admin', 'Admin', 'Sales Head', 'Manager', 'Sales Exec'] },
+    { text: 'Reports', icon: <BarChartIcon />, path: '/reports', restrictedTo: ['Super Admin', 'Admin', 'Sales Head', 'Manager'] },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
+
+  const menuItems = allMenuItems.filter(item => {
+    if (!item.restrictedTo) return true;
+    return item.restrictedTo.includes(user?.role?.role_name);
+  });
 
   const renderDrawerContent = (isExpanded) => (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowX: 'hidden' }}>

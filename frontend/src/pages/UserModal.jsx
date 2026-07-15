@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   Dialog, DialogTitle, DialogContent, DialogActions, 
   Button, TextField, Typography, Grid, 
-  FormControl, InputLabel, Select, MenuItem
+  FormControl, InputLabel, Select, MenuItem, InputAdornment, IconButton
 } from '@mui/material';
-import { PersonAdd } from '@mui/icons-material';
+import { PersonAdd, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchRoles, createUser, updateUser } from '../api/userService';
 import { toast } from 'react-toastify';
@@ -16,6 +16,7 @@ const UserModal = ({ open, onClose, user }) => {
     password: '',
     role_id: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -23,25 +24,31 @@ const UserModal = ({ open, onClose, user }) => {
     queryKey: ['roles'],
     queryFn: fetchRoles
   });
-  const roles = rolesData?.data || [];
+  const roles = Array.isArray(rolesData) ? rolesData : (rolesData?.data || []);
 
   useEffect(() => {
     if (user) {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        password: '', // Leave blank when editing unless changing
+        password: '',
         role_id: user.role_id || ''
       });
     } else {
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         name: '',
         email: '',
-        password: '',
-        role_id: roles.length > 0 ? roles[0].id : ''
-      });
+        password: ''
+      }));
     }
-  }, [user, roles, open]);
+  }, [user, open]);
+
+  useEffect(() => {
+    if (!user && roles.length > 0 && !formData.role_id) {
+      setFormData(prev => ({ ...prev, role_id: roles[0].id }));
+    }
+  }, [roles, user, formData.role_id]);
 
   const saveMutation = useMutation({
     mutationFn: (data) => user ? updateUser(user.id, data) : createUser(data),
@@ -64,7 +71,11 @@ const UserModal = ({ open, onClose, user }) => {
       toast.error('Please fill in all required fields.');
       return;
     }
-    saveMutation.mutate(formData);
+    const dataToSend = { ...formData };
+    if (user && !dataToSend.password) {
+      delete dataToSend.password;
+    }
+    saveMutation.mutate(dataToSend);
   };
   
   return (
@@ -80,13 +91,32 @@ const UserModal = ({ open, onClose, user }) => {
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <TextField fullWidth name="name" label="Full Name" value={formData.name} onChange={handleChange} placeholder="e.g. John Doe" size="small" />
+            <TextField fullWidth name="name" label="Full Name" value={formData.name} onChange={handleChange} placeholder="e.g. John Doe" size="small" autoComplete="off" />
           </Grid>
           <Grid item xs={12}>
-            <TextField fullWidth name="email" label="Email Address" value={formData.email} onChange={handleChange} placeholder="john@company.com" size="small" />
+            <TextField fullWidth name="email" label="Email Address" value={formData.email} onChange={handleChange} placeholder="john@company.com" size="small" autoComplete="off" />
           </Grid>
           <Grid item xs={12}>
-            <TextField fullWidth name="password" label="Password" type="password" value={formData.password} onChange={handleChange} placeholder={user ? "Leave blank to keep current" : "Secure password"} size="small" />
+            <TextField 
+              fullWidth 
+              name="password" 
+              label="Password" 
+              type={showPassword ? 'text' : 'password'} 
+              value={formData.password} 
+              onChange={handleChange} 
+              placeholder={user ? "Leave blank to keep current" : "Secure password"} 
+              size="small"
+              autoComplete="new-password"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small">
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
           </Grid>
           <Grid item xs={12}>
             <FormControl fullWidth size="small">

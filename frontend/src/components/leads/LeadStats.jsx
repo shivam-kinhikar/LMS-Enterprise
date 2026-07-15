@@ -28,7 +28,7 @@ const LeadStats = () => {
     { id: 1, title: 'Total Leads', value: realStats.total_leads || 0, icon: <Group />, color: '#4F46E5', bg: '#EEF2FF', growth: 'Lifetime' },
     { id: 2, title: 'Active Followups', value: realStats.active_followups || 0, icon: <ContactPhone />, color: '#8B5CF6', bg: '#F3E8FF', growth: 'Pending Action' },
     { id: 3, title: 'Won Deals', value: realStats.won_deals || 0, icon: <CheckCircle />, color: '#10B981', bg: '#D1FAE5', growth: 'Closed Won' },
-    { id: 4, title: 'Total Revenue', value: `$${Number(realStats.revenue || 0).toLocaleString()}`, icon: <EmojiEvents />, color: '#F59E0B', bg: '#FEF3C7', growth: 'Est. Value' },
+    { id: 4, title: 'Total Revenue', value: `₹${Number(realStats.revenue || 0).toLocaleString()}`, icon: <EmojiEvents />, color: '#F59E0B', bg: '#FEF3C7', growth: 'Est. Value' },
   ];
 
   return (

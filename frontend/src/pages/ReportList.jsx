@@ -47,7 +47,7 @@ const ReportList = () => {
     );
   }
 
-  const reports = responseData?.data || {};
+  const reports = responseData || {};
   const performanceData = reports.performance || { daily: [], weekly: [], monthly: [] };
   const revenueData = reports.revenue || [];
   const sourceData = reports.sources || [];

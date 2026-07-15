@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import { 
   Box, Typography, Card, CardContent, Tabs, Tab, Grid, 
   Button, TextField, Avatar, Divider, Switch, FormControlLabel,
@@ -10,7 +10,8 @@ import {
 import { toast } from 'react-toastify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import UserModal from './UserModal';
-import { fetchUsers, deleteUser, updateUser } from '../api/userService';
+import { fetchUsers, deleteUser, updateUser, uploadUserAvatar } from '../api/userService';
+import { AuthContext } from '../context/AuthContext';
 
 const TabPanel = ({ children, value, index }) => (
   <div hidden={value !== index} style={{ flexGrow: 1, paddingLeft: '24px' }}>
@@ -21,9 +22,11 @@ const TabPanel = ({ children, value, index }) => (
 
 
 const Settings = () => {
+  const { user, setUser } = useContext(AuthContext);
   const [tab, setTab] = useState(0);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const fileInputRef = useRef(null);
 
   const queryClient = useQueryClient();
 
@@ -62,6 +65,25 @@ const Settings = () => {
     toast.success('Settings updated successfully!');
   };
 
+  const uploadMutation = useMutation({
+    mutationFn: (file) => {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      return uploadUserAvatar(user.id, formData);
+    },
+    onSuccess: (data) => {
+      toast.success('Avatar updated successfully!');
+      setUser(data.data);
+    },
+    onError: () => toast.error('Failed to upload avatar.')
+  });
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      uploadMutation.mutate(e.target.files[0]);
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ mb: 4 }}>
@@ -84,7 +106,9 @@ const Settings = () => {
             sx={{ '& .MuiTab-root': { alignItems: 'flex-start', textAlign: 'left', fontWeight: 600, textTransform: 'none', minHeight: 56 } }}
           >
             <Tab icon={<Person fontSize="small" />} iconPosition="start" label="My Profile" />
-            <Tab icon={<Group fontSize="small" />} iconPosition="start" label="Team & Roles" />
+            {user?.role?.role_name === 'Super Admin' && (
+              <Tab icon={<Group fontSize="small" />} iconPosition="start" label="Team & Roles" />
+            )}
           </Tabs>
         </Box>
 
@@ -96,16 +120,36 @@ const Settings = () => {
             <Typography variant="h6" fontWeight={700} mb={3}>Personal Information</Typography>
             <Grid container spacing={4}>
               <Grid item xs={12} md={3} sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ width: 120, height: 120, mx: 'auto', mb: 2, bgcolor: 'primary.main', fontSize: '3rem' }}>A</Avatar>
-                <Button variant="outlined" size="small" startIcon={<CloudUpload />}>Change Photo</Button>
+                <Avatar 
+                  src={user?.avatar ? `http://localhost:8000${user.avatar}` : ''}
+                  sx={{ width: 120, height: 120, mx: 'auto', mb: 2, bgcolor: 'primary.main', fontSize: '3rem' }}
+                >
+                  {!user?.avatar && (user?.name?.[0]?.toUpperCase() || 'U')}
+                </Avatar>
+                <input 
+                  type="file" 
+                  hidden 
+                  accept="image/*" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                />
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  startIcon={<CloudUpload />} 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadMutation.isPending}
+                >
+                  {uploadMutation.isPending ? 'Uploading...' : 'Change Photo'}
+                </Button>
               </Grid>
               <Grid item xs={12} md={9}>
                 <Grid container spacing={3}>
                   <Grid item xs={12} sm={6}>
-                    <TextField fullWidth label="Full Name" defaultValue="Admin User" size="small" />
+                    <TextField fullWidth label="Full Name" defaultValue={user?.name || ''} size="small" />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField fullWidth label="Email Address" defaultValue="admin@lms.com" size="small" />
+                    <TextField fullWidth label="Email Address" defaultValue={user?.email || ''} size="small" disabled />
                   </Grid>
                 </Grid>
               </Grid>
@@ -117,10 +161,13 @@ const Settings = () => {
           </TabPanel>
 
           {/* TAB 1: TEAM & ROLES */}
-          <TabPanel value={tab} index={1}>
+          {user?.role?.role_name === 'Super Admin' && (
+            <TabPanel value={tab} index={1}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
               <Typography variant="h6" fontWeight={700}>User Management</Typography>
-              <Button variant="contained" size="small" startIcon={<Add />} onClick={() => { setEditingUser(null); setUserModalOpen(true); }}>Invite User</Button>
+              {user?.role?.role_name === 'Super Admin' && (
+                <Button variant="contained" size="small" startIcon={<Add />} onClick={() => { setEditingUser(null); setUserModalOpen(true); }}>Invite User</Button>
+              )}
             </Box>
             <TableContainer variant="outlined" component={Card} sx={{ boxShadow: 'none' }}>
               <Table>
@@ -130,20 +177,22 @@ const Settings = () => {
                     <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Role</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+                    {user?.role?.role_name === 'Super Admin' && (
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell sx={{ fontWeight: 600 }}>{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
+                  {users.map((rowUser) => (
+                    <TableRow key={rowUser.id}>
+                      <TableCell sx={{ fontWeight: 600 }}>{rowUser.name}</TableCell>
+                      <TableCell>{rowUser.email}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={user.role?.role_name || 'User'} 
+                          label={rowUser.role?.role_name || 'User'} 
                           size="small" 
                           variant="outlined"
-                          color={(user.role?.role_name || 'User') === 'Admin' ? 'primary' : 'default'}
+                          color={(rowUser.role?.role_name || 'User') === 'Admin' ? 'primary' : 'default'}
                           sx={{ fontWeight: 600, borderRadius: '6px' }}
                         />
                       </TableCell>
@@ -152,18 +201,21 @@ const Settings = () => {
                           control={
                             <Switch 
                               size="small" 
-                              checked={Boolean(user.status)} 
-                              onChange={(e) => toggleStatusMutation.mutate({ id: user.id, status: e.target.checked })} 
+                              checked={Boolean(rowUser.status)} 
+                              onChange={(e) => toggleStatusMutation.mutate({ id: rowUser.id, status: e.target.checked })} 
                               color="success" 
+                              disabled={user?.role?.role_name !== 'Super Admin'}
                             />
                           } 
-                          label={<Typography variant="body2" fontWeight={600} color={user.status ? 'success.main' : 'text.secondary'}>{user.status ? 'Active' : 'Inactive'}</Typography>} 
+                          label={<Typography variant="body2" fontWeight={600} color={rowUser.status ? 'success.main' : 'text.secondary'}>{rowUser.status ? 'Active' : 'Inactive'}</Typography>} 
                         />
                       </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" color="primary" onClick={() => { setEditingUser(user); setUserModalOpen(true); }}><Edit fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDelete(user.id)} disabled={deleteMutation.isPending}><Delete fontSize="small" /></IconButton>
-                      </TableCell>
+                      {user?.role?.role_name === 'Super Admin' && (
+                        <TableCell align="right">
+                          <IconButton size="small" color="primary" onClick={() => { setEditingUser(rowUser); setUserModalOpen(true); }}><Edit fontSize="small" /></IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleDelete(rowUser.id)} disabled={deleteMutation.isPending}><Delete fontSize="small" /></IconButton>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -171,6 +223,7 @@ const Settings = () => {
             </TableContainer>
             <UserModal open={userModalOpen} onClose={() => setUserModalOpen(false)} user={editingUser} />
           </TabPanel>
+          )}
 
 
 

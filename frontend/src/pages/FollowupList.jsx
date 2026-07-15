@@ -66,11 +66,14 @@ const FollowupList = () => {
 
     return {
       id: f.id,
+      lead_id: f.lead_id || (f.lead ? f.lead.id : null),
       leadName: f.lead?.name || 'Unknown Lead',
       company: f.lead?.company || 'No Company',
       type: f.type,
       status: f.status || 'Pending',
       date: `${f.date} ${f.time || ''}`.trim(),
+      rawDate: f.date,
+      rawTime: f.time,
       notes: f.remarks || '',
       isOverdue: isOverdue
     };

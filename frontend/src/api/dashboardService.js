@@ -1,8 +1,8 @@
 import axiosClient from './axiosClient';
 
-export const fetchDashboardStats = async () => {
-  const response = await axiosClient.get('/dashboard');
-  return response.data; // The interceptor already returned response.data, so this is response.data.data from Laravel
+export const fetchDashboardStats = async (params = {}) => {
+  const response = await axiosClient.get('/dashboard', { params });
+  return response.data;
 };
 
 export const clearAllData = async () => {

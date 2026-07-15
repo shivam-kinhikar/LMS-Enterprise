@@ -9,7 +9,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getLead } from '../api/leadService';
 import FollowupModal from '../components/leads/FollowupModal';
 import CommunicationHistory from '../components/leads/CommunicationHistory';
+import LeadForm from '../components/leads/LeadForm';
 import { CircularProgress } from '@mui/material';
+import { toast } from 'react-toastify';
 
 const TabPanel = (props) => {
   const { children, value, index, ...other } = props;
@@ -29,6 +31,7 @@ const LeadDetails = () => {
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
   const [isFollowupModalOpen, setIsFollowupModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -85,14 +88,13 @@ const LeadDetails = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button variant="outlined" sx={{ borderRadius: 2, fontWeight: 600 }}>Convert to Client</Button>
-          <Button variant="contained" sx={{ borderRadius: 2, fontWeight: 600 }}>Edit Lead</Button>
+          <Button variant="contained" sx={{ borderRadius: 2, fontWeight: 600 }} onClick={() => setIsEditModalOpen(true)}>Edit Lead</Button>
         </Box>
       </Box>
 
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'flex-start' }}>
         {/* Left Side: Profile Card */}
-        <Grid item xs={12} md={4} lg={3}>
+        <Box sx={{ width: { xs: '100%', md: '340px' }, flexShrink: 0 }}>
           <Card sx={{ borderRadius: '16px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ textAlign: 'center', mb: 3 }}>
@@ -119,7 +121,7 @@ const LeadDetails = () => {
                   <Stack spacing={1.5} sx={{ mt: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Email fontSize="small" color="action" />
-                      <Typography variant="body2">{lead.email || 'N/A'}</Typography>
+                      <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{lead.email || 'N/A'}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Phone fontSize="small" color="action" />
@@ -160,10 +162,10 @@ const LeadDetails = () => {
               </Stack>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* Right Side: Tabbed Interface */}
-        <Grid item xs={12} md={8} lg={9}>
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <Card sx={{ borderRadius: '16px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)', height: '100%' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
               <Tabs 
@@ -176,24 +178,75 @@ const LeadDetails = () => {
                 <Tab label="Overview" />
                 <Tab icon={<History />} iconPosition="start" label="Timeline & Logs" sx={{ minHeight: 64 }} />
                 <Tab icon={<CalendarToday />} iconPosition="start" label="Follow-ups" sx={{ minHeight: 64 }} />
-                <Tab icon={<Person />} iconPosition="start" label="Notes" sx={{ minHeight: 64 }} />
-                <Tab icon={<Business />} iconPosition="start" label="Documents" sx={{ minHeight: 64 }} />
               </Tabs>
             </Box>
             <Divider />
             
             <TabPanel value={tabValue} index={0}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Lead Overview</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Detailed overview module coming soon. Will display aggregate stats, custom fields, and summary data for this lead.
-              </Typography>
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" fontWeight={700}>Executive Overview</Typography>
+              </Box>
+              
+              <Grid container spacing={2}>
+                {/* Metric Cards */}
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', bgcolor: 'grey.50', display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}><Business /></Avatar>
+                    <Box>
+                      <Typography variant="caption" fontWeight={600} color="text.secondary" textTransform="uppercase">Industry</Typography>
+                      <Typography variant="body1" fontWeight={700} color="text.primary">{lead.industry || 'Not Specified'}</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', bgcolor: 'grey.50', display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Avatar sx={{ bgcolor: 'success.light', color: 'success.dark' }}><Typography variant="h6">₹</Typography></Avatar>
+                    <Box>
+                      <Typography variant="caption" fontWeight={600} color="text.secondary" textTransform="uppercase">Est. Value</Typography>
+                      <Typography variant="body1" fontWeight={700} color="success.main">{lead.budget && !isNaN(Number(lead.budget)) ? `₹${Number(lead.budget).toLocaleString()}` : 'Not Specified'}</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', bgcolor: 'grey.50', display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Avatar sx={{ bgcolor: 'info.light', color: 'info.dark' }}><History /></Avatar>
+                    <Box>
+                      <Typography variant="caption" fontWeight={600} color="text.secondary" textTransform="uppercase">Lead Source</Typography>
+                      <Typography variant="body1" fontWeight={700} color="text.primary">{lead.source?.name || 'Organic / Direct'}</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', bgcolor: 'grey.50', display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}><Person /></Avatar>
+                    <Box>
+                      <Typography variant="caption" fontWeight={600} color="text.secondary" textTransform="uppercase">Product Interest</Typography>
+                      <Typography variant="body1" fontWeight={700} color="text.primary">{lead.product || 'Not Specified'}</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                {/* Notes Section */}
+                <Grid item xs={12}>
+                  <Box sx={{ mt: 2, p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', bgcolor: 'background.paper', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)' }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: 'text.primary' }}>Background & Internal Notes</Typography>
+                    <Divider sx={{ mb: 2 }} />
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: lead.notes ? 'text.secondary' : 'text.disabled', lineHeight: 1.6 }}>
+                      {lead.notes || 'No background notes have been added to this lead yet.'}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
             </TabPanel>
             
             {/* Tab 1: Timeline & Logs */}
             <TabPanel value={tabValue} index={1}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center' }}>
                 <Typography variant="h6" fontWeight={700}>Communication History</Typography>
-                <Button variant="contained" size="small" sx={{ borderRadius: 2 }} onClick={() => setIsFollowupModalOpen(true)}>Log Past Interaction</Button>
+                <Button variant="contained" size="small" sx={{ borderRadius: 2 }} onClick={() => toast.info('Log Interaction feature coming soon!')}>Log Past Interaction</Button>
               </Box>
               <CommunicationHistory />
             </TabPanel>
@@ -209,24 +262,20 @@ const LeadDetails = () => {
               </Typography>
             </TabPanel>
 
-            {/* Tab 3: Notes */}
-            <TabPanel value={tabValue} index={3}>
-              <Typography variant="body2" color="text.secondary">Notes module coming soon.</Typography>
-            </TabPanel>
-
-            {/* Tab 4: Documents */}
-            <TabPanel value={tabValue} index={4}>
-              <Typography variant="body2" color="text.secondary">Drag and drop business cards, proposals, or contracts here.</Typography>
-            </TabPanel>
-
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
       
       <FollowupModal
         open={isFollowupModalOpen}
         onClose={() => setIsFollowupModalOpen(false)}
         leadName={lead.name}
+      />
+      
+      <LeadForm 
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        lead={lead}
       />
     </Box>
   );

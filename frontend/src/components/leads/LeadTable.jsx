@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext';
 import { 
   Box, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
   Checkbox, Typography, Chip, IconButton, Menu, MenuItem, TextField, InputAdornment, Button,
@@ -35,6 +36,7 @@ const LeadTable = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useContext(AuthContext);
   
   const { data: leadsData, isLoading, refetch } = useQuery({
     queryKey: ['leads', { page: page + 1, search: searchQuery }],
@@ -130,7 +132,6 @@ const LeadTable = () => {
   };
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setActiveLeadId(null);
   };
   
   const handleViewDetails = () => {
@@ -235,13 +236,17 @@ const LeadTable = () => {
             <Stack direction="row" spacing={1} alignItems="center" sx={{ bgcolor: 'primary.50', px: 2, py: 0.5, borderRadius: 2 }}>
               <Typography variant="subtitle2" color="primary">{selected.length} selected</Typography>
               <Button size="small" color="primary" startIcon={<Assignment />} onClick={handleBulkAssign}>Assign</Button>
-              <Button size="small" color="error" startIcon={<Delete />} onClick={handleBulkDelete}>Delete</Button>
+              {user?.role?.role_name !== 'Sales Exec' && (
+                <Button size="small" color="error" startIcon={<Delete />} onClick={handleBulkDelete}>Delete</Button>
+              )}
             </Stack>
           ) : null}
 
-          <Button 
-            startIcon={<FileDownload />} 
-            color="inherit" 
+          {user?.role?.role_name !== 'Sales Exec' && (
+            <>
+              <Button 
+                startIcon={<FileDownload />} 
+                color="inherit" 
             sx={{ textTransform: 'none', fontWeight: 600 }}
             onClick={handleExportMenuOpen}
           >
@@ -250,8 +255,10 @@ const LeadTable = () => {
           <Menu anchorEl={exportAnchorEl} open={Boolean(exportAnchorEl)} onClose={handleExportMenuClose}>
             <MenuItem onClick={() => handleExport('CSV')}>Export as CSV</MenuItem>
             <MenuItem onClick={() => handleExport('Excel')}>Export as Excel</MenuItem>
-            <MenuItem onClick={() => handleExport('PDF')}>Export as PDF</MenuItem>
-          </Menu>
+              <MenuItem onClick={() => handleExport('PDF')}>Export as PDF</MenuItem>
+            </Menu>
+          </>
+          )}
 
         </Box>
       </Box>
@@ -343,19 +350,6 @@ const LeadTable = () => {
                   <TableCell><Typography variant="body2" color="text.secondary">{new Date(lead.created_at || lead.created).toLocaleDateString()}</Typography></TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={(e) => handleMenuOpen(e, lead.id)}><MoreVert /></IconButton>
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={Boolean(anchorEl)}
-                      onClose={handleMenuClose}
-                      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                    >
-                      <MenuItem onClick={handleViewDetails}>View Details</MenuItem>
-                      <MenuItem onClick={() => { handleEditLead(); handleMenuClose(); }}>Edit Lead</MenuItem>
-                      <MenuItem onClick={() => { handleAddFollowup(); handleMenuClose(); }}>Create Follow-up</MenuItem>
-                      <MenuItem onClick={() => { handleAssignLead(); handleMenuClose(); }}>Assign Lead</MenuItem>
-                      <MenuItem onClick={() => handleDeleteLead(lead.id)} sx={{ color: 'error.main' }}>Delete Lead</MenuItem>
-                    </Menu>
                   </TableCell>
                 </TableRow>
               );
@@ -379,6 +373,23 @@ const LeadTable = () => {
         onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
       />
       
+      {/* Row Action Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem onClick={handleViewDetails}>View Details</MenuItem>
+        <MenuItem onClick={() => { handleEditLead(); handleMenuClose(); }}>Edit Lead</MenuItem>
+        <MenuItem onClick={() => { handleAddFollowup(); handleMenuClose(); }}>Create Follow-up</MenuItem>
+        <MenuItem onClick={() => { handleAssignLead(); handleMenuClose(); }}>Assign Lead</MenuItem>
+        {user?.role?.role_name !== 'Sales Exec' && (
+          <MenuItem onClick={() => { handleDeleteLead(activeLeadId); handleMenuClose(); }} sx={{ color: 'error.main' }}>Delete Lead</MenuItem>
+        )}
+      </Menu>
+      
       {/* Edit Form */}
       {activeLeadId && (
         <LeadForm 
@@ -401,7 +412,7 @@ const LeadTable = () => {
       <AssignLeadModal 
         open={isAssignOpen} 
         onClose={() => setIsAssignOpen(false)} 
-        selectedCount={assignCount} 
+        selectedIds={activeLeadId ? [activeLeadId] : selected} 
       />
     </Card>
   );
